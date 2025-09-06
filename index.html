@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Расписание - Корочкина Ульяна</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Моё расписание</h1>
+            <div class="date-display" id="currentDate"></div>
+        </header>
+        
+        <div class="week-calendar" id="weekCalendar">
+            <!-- Календарь на неделю -->
+        </div>
+        
+        <div class="schedule-container">
+            <div class="schedule-header">
+                <h2 id="scheduleTitle">Расписание на сегодня</h2>
+                <button class="refresh-btn" id="refreshBtn">🔄</button>
+            </div>
+            <div id="scheduleContent">
+                <!-- Расписание будет здесь -->
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
