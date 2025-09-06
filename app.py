@@ -1,5 +1,7 @@
 // Основные функции приложения
+console.log("App.js loaded successfully!");
 document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOM fully loaded");
     initializeApp();
 });
 
@@ -36,24 +38,13 @@ function updateCurrentDate() {
 
 function renderWeekCalendar() {
     const calendar = document.getElementById('weekCalendar');
-    calendar.innerHTML = '';
-    
-    const today = new Date();
-    const currentDate = today.getDate();
-    const currentDay = today.getDay();
-    
-    // Находим понедельник текущей недели
-    const monday = new Date(today);
-    monday.setDate(monday.getDate() - currentDay + (currentDay === 0 ? -6 : 1));
-    
-    // Создаем дни недели
-    for (let i = 0; i < 7; i++) {
-        const dayDate = new Date(monday);
-        dayDate.setDate(monday.getDate() + i);
-        
-        const dayElement = createDayElement(dayDate, currentDate);
-        calendar.appendChild(dayElement);
+    if (!calendar) {
+        console.error("Calendar element not found!");
+        return;
     }
+    
+    console.log("Rendering calendar...");
+    calendar.innerHTML = '<div class="day"><div class="day-number">6</div><div class="day-name">Ср</div></div>';
 }
 
 function createDayElement(date, currentDate) {
