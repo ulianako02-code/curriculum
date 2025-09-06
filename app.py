@@ -1,60 +1,257 @@
-from flask import Flask, render_template, jsonify, request
-import requests
-from datetime import datetime, date, timedelta
-from parser import fetch_schedule  # Импортируем функцию парсера
+// Основные функции приложения
+document.addEventListener('DOMContentLoaded', function() {
+    initializeApp();
+});
 
+async function initializeApp() {
+    try {
+        // Устанавливаем текущую дату
+        updateCurrentDate();
+        
+        // Инициализируем календарь
+        renderWeekCalendar();
+        
+        // Загружаем расписание
+        await loadSchedule();
+        
+        // Добавляем обработчики событий
+        setupEventListeners();
+        
+    } catch (error) {
+        console.error('Ошибка инициализации:', error);
+        showError('Ошибка при загрузке приложения');
+    }
+}
 
-app = Flask(__name__)
+function updateCurrentDate() {
+    const now = new Date();
+    const options = { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    };
+    document.getElementById('currentDate').textContent = now.toLocaleDateString('ru-RU', options);
+}
 
-# Главная страница с календарем
-@app.route('/')
-def index():
-    return render_template('index.html')
+function renderWeekCalendar() {
+    const calendar = document.getElementById('weekCalendar');
+    calendar.innerHTML = '';
+    
+    const today = new Date();
+    const currentDate = today.getDate();
+    const currentDay = today.getDay();
+    
+    // Находим понедельник текущей недели
+    const monday = new Date(today);
+    monday.setDate(monday.getDate() - currentDay + (currentDay === 0 ? -6 : 1));
+    
+    // Создаем дни недели
+    for (let i = 0; i < 7; i++) {
+        const dayDate = new Date(monday);
+        dayDate.setDate(monday.getDate() + i);
+        
+        const dayElement = createDayElement(dayDate, currentDate);
+        calendar.appendChild(dayElement);
+    }
+}
 
-# API-маршрут для получения расписания на конкретную дату
-@app.route('/api/schedule', methods=['GET'])
-def get_schedule():
-    # Получаем дату из запроса (например, /api/schedule?date=2025-09-06)
-    date_str = request.args.get('date')
-    if not date_str:
-        return jsonify({'error': 'Parameter "date" (YYYY-MM-DD) is required'}), 400
+function createDayElement(date, currentDate) {
+    const day = document.createElement('div');
+    day.className = 'day';
+    
+    const dayNumber = date.getDate();
+    const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+    const dayName = dayNames[date.getDay()];
+    
+    // Определяем класс для стилизации
+    if (dayNumber === currentDate) {
+        day.classList.add('current-day');
+    } else if (dayNumber < currentDate) {
+        day.classList.add('past-day');
+    } else {
+        day.classList.add('future-day');
+    }
+    
+    day.innerHTML = `
+        <div class="day-number">${dayNumber}</div>
+        <div class="day-name">${dayName}</div>
+    `;
+    
+    // Добавляем обработчик клика
+    day.addEventListener('click', () => {
+        selectDate(date);
+    });
+    
+    return day;
+}
 
-    try:
-        selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-    except ValueError:
-        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD.'}), 400
+async function loadSchedule() {
+    try {
+        showLoading();
+        
+        // Проверяем кэш
+        const now = Date.now();
+        if (!scheduleData || !lastFetchTime || (now - lastFetchTime) > CONFIG.CACHE_DURATION) {
+            await fetchScheduleData();
+        }
+        
+        displayScheduleForDate(new Date());
+        
+    } catch (error) {
+        console.error('Ошибка загрузки расписания:', error);
+        showError('Ошибка при загрузке расписания. Проверьте соединение или попробуйте позже.');
+    }
+}
 
-    # ЗАПУСКАЕМ ПАРСЕР ДЛЯ ПОЛУЧЕНИЯ СВЕЖИХ ДАННЫХ ПРИ КАЖДОМ ЗАПРОСЕ
-    print(f"Запуск парсера для получения актуальных данных...")
-    fresh_data = fetch_schedule()  # Эта функция возвращает расписание
+async function fetchScheduleData() {
+    try {
+        const formData = new URLSearchParams();
+        for (const key in CONFIG.REQUEST_BODY) {
+            formData.append(key, CONFIG.REQUEST_BODY[key]);
+        }
+        
+        const response = await fetch(CONFIG.API_URL, {
+            method: 'POST',
+            headers: CONFIG.REQUEST_HEADERS,
+            body: formData
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        scheduleData = await response.json();
+        lastFetchTime = Date.now();
+        
+    } catch (error) {
+        console.error('Ошибка получения данных:', error);
+        throw error;
+    }
+}
 
-    # Фильтруем занятия на выбранный день
-    schedule_for_date = []
-    for record in fresh_data.get('records', []):
-        # Дата в записи хранится в поле 'datestr' в формате "DD.MM.YYYY"
-        record_date_str = record.get('datestr')
-        if not record_date_str:
-            continue
-        try:
-            # Конвертируем дату из строки "DD.MM.YYYY" в объект date
-            record_date = datetime.strptime(record_date_str, '%d.%m.%Y').date()
-        except ValueError:
-            continue
+function displayScheduleForDate(date) {
+    const scheduleContent = document.getElementById('scheduleContent');
+    const scheduleTitle = document.getElementById('scheduleTitle');
+    
+    if (!scheduleData || !scheduleData.records) {
+        scheduleContent.innerHTML = '<div class="error-message">Данные расписания не получены</div>';
+        return;
+    }
+    
+    const dateStr = date.toLocaleDateString('ru-RU');
+    scheduleTitle.textContent = `Расписание на ${dateStr}`;
+    
+    const daySchedule = scheduleData.records.filter(record => {
+        const recordDate = parseDate(record.r2);
+        return recordDate && recordDate.toDateString() === date.toDateString();
+    });
+    
+    if (daySchedule.length === 0) {
+        scheduleContent.innerHTML = `
+            <div class="no-classes">
+                <h3>Занятий нет 🎉</h3>
+                <p>На ${dateStr} занятий не запланировано</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let scheduleHTML = '';
+    daySchedule.forEach((lesson, index) => {
+        scheduleHTML += `
+            <div class="schedule-item">
+                <div class="time">${lesson.ptime || 'Время не указано'}</div>
+                <div class="subject">${lesson.D2 || 'Предмет не указан'}</div>
+                <div class="details teacher">${lesson.prs || 'Преподаватель не указан'}</div>
+                <div class="details auditorium">${lesson.A2 || 'Аудитория не указана'}</div>
+                <div class="details type">${lesson.LessonType || 'Тип не указан'}</div>
+                ${index < daySchedule.length - 1 ? '<div class="divider"></div>' : ''}
+            </div>
+        `;
+    });
+    
+    scheduleContent.innerHTML = scheduleHTML;
+}
 
-        if record_date == selected_date:
-            # Форматируем запись для фронтенда
-            formatted_record = {
-                'time': record.get('ptime', ''),
-                'subject': record.get('D2', ''),
-                'type': record.get('LessonType', ''),
-                'auditorium': record.get('A2', ''),
-                'teacher': record.get('prs', ''),
-                'date': record_date_str
-            }
-            schedule_for_date.append(formatted_record)
+function parseDate(dateString) {
+    try {
+        if (dateString && dateString.startsWith('/Date(')) {
+            const timestamp = parseInt(dateString.slice(6, -2));
+            return new Date(timestamp);
+        }
+        return null;
+    } catch (error) {
+        console.error('Ошибка парсинга даты:', error);
+        return null;
+    }
+}
 
-    return jsonify(schedule_for_date)
+function selectDate(date) {
+    // Обновляем выделение в календаре
+    document.querySelectorAll('.day').forEach(dayEl => {
+        dayEl.classList.remove('current-day');
+    });
+    
+    // Добавляем выделение выбранной дате
+    const dayNumber = date.getDate();
+    document.querySelectorAll('.day-number').forEach(el => {
+        if (parseInt(el.textContent) === dayNumber) {
+            el.parentElement.classList.add('current-day');
+        }
+    });
+    
+    // Показываем расписание для выбранной даты
+    displayScheduleForDate(date);
+}
 
-# Запуск сервера
-if __name__ == '__main__':
-    app.run(debug=True)
+function showLoading() {
+    document.getElementById('scheduleContent').innerHTML = `
+        <div class="loading">Загрузка расписания</div>
+    `;
+}
+
+function showError(message) {
+    document.getElementById('scheduleContent').innerHTML = `
+        <div class="error-message">
+            <h3>Ошибка</h3>
+            <p>${message}</p>
+            <button onclick="location.reload()" style="
+                background: #8b0000;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                margin-top: 10px;
+            ">Попробовать снова</button>
+        </div>
+    `;
+}
+
+function setupEventListeners() {
+    // Обработчик для кнопки обновления
+    document.getElementById('refreshBtn').addEventListener('click', async () => {
+        scheduleData = null;
+        lastFetchTime = null;
+        await loadSchedule();
+    });
+    
+    // Обработчик для обновления расписания при изменении даты
+    const todayBtn = document.querySelector('.current-day');
+    if (todayBtn) {
+        todayBtn.addEventListener('dblclick', () => {
+            const today = new Date();
+            updateCurrentDate();
+            renderWeekCalendar();
+            displayScheduleForDate(today);
+        });
+    }
+}
+
+// Глобальные функции для использования в HTML
+window.refreshSchedule = async function() {
+    scheduleData = null;
+    lastFetchTime = null;
+    await loadSchedule();
+};
