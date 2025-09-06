@@ -19,7 +19,7 @@
         
         <div class="schedule-container">
             <div class="schedule-header">
-                <h2 id="scheduleTitle">Расписание на сегодня 06</h2>
+                <h2 id="scheduleTitle">Расписание на сегодня 07</h2>
                 <button class="refresh-btn" id="refreshBtn">🔄</button>
             </div>
             <div id="scheduleContent">
@@ -30,5 +30,21 @@
 
     <script src="config.js"></script>
     <script src="app.js"></script>
+    <script>
+    // Простая проверка загрузки файлов
+    console.log("Index.html loaded");
+    
+    // Проверяем, загружены ли CSS и JS
+    setTimeout(function() {
+        const stylesLoaded = document.styleSheets.length > 0;
+        console.log("CSS loaded:", stylesLoaded);
+        
+        if (typeof renderWeekCalendar === 'function') {
+            console.log("JS functions loaded");
+        } else {
+            console.error("JS functions NOT loaded");
+        }
+    }, 1000);
+</script>
 </body>
 </html>
