@@ -3,6 +3,7 @@ import requests
 from datetime import datetime, date, timedelta
 from parser import fetch_schedule  # Импортируем функцию парсера
 
+
 app = Flask(__name__)
 
 # Главная страница с календарем
